@@ -15,6 +15,45 @@
   let contextMenuX = $state(0);
   let contextMenuY = $state(0);
 
+  // Generate a consistent color from a string (URL)
+  function getColorFromString(str: string): string {
+    const colors = [
+      "#FF6B6B", // Red
+      "#4ECDC4", // Teal
+      "#45B7D1", // Blue
+      "#96CEB4", // Green
+      "#FFEAA7", // Yellow
+      "#DDA0DD", // Plum
+      "#98D8C8", // Mint
+      "#F7DC6F", // Gold
+      "#BB8FCE", // Purple
+      "#85C1E9", // Light Blue
+      "#F8B500", // Orange
+      "#00CED1", // Dark Cyan
+      "#FF7F50", // Coral
+      "#9FE2BF", // Sea Green
+      "#DE3163", // Cerise
+      "#40E0D0", // Turquoise
+    ];
+
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  // Get the first letter for the fallback favicon
+  function getInitialLetter(title: string): string {
+    // Get first alphanumeric character, prioritizing letters
+    const match = title.match(/[a-zA-Z0-9]/);
+    return match ? match[0].toUpperCase() : "?";
+  }
+
+  // Computed values for the fallback
+  let letterInitial = $derived(getInitialLetter(bookmark.title));
+  let letterColor = $derived(getColorFromString(bookmark.url));
+
   // Load custom favicon or use default
   $effect(() => {
     async function loadFavicon() {
@@ -72,6 +111,7 @@
 
 <button
   class="tile"
+  class:square={settings.squareTiles}
   onclick={openBookmark}
   oncontextmenu={handleContextMenu}
   type="button"
@@ -93,6 +133,10 @@
       loading="lazy"
       onerror={() => (faviconSrc = "")}
     />
+  {:else if settings.showFavicons}
+    <div class="favicon-fallback" style="background-color: {letterColor};">
+      {letterInitial}
+    </div>
   {/if}
   <span class="title" style={lineClampStyle}>{bookmark.title}</span>
 </button>
@@ -158,11 +202,29 @@
     transform: translateY(0);
   }
 
+  .tile.square {
+    aspect-ratio: 1 / 1;
+  }
+
   .favicon {
     width: 32px;
     height: 32px;
     margin-bottom: 8px;
     border-radius: 4px;
+  }
+
+  .favicon-fallback {
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    text-transform: uppercase;
   }
 
   .title {
@@ -173,5 +235,39 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
+  }
+
+  .context-menu {
+    position: fixed;
+    z-index: 1000;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    padding: 4px;
+    min-width: 150px;
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #333;
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+
+  .context-menu-item:hover {
+    background-color: #f0f0f0;
+  }
+
+  .context-menu-item svg {
+    flex-shrink: 0;
   }
 </style>

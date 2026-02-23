@@ -3,33 +3,57 @@
 
   interface Props {
     settings: Settings;
-    onApply: (settings: Settings) => void;
+    onSettingsChange: (settings: Settings) => void;
+    onSave: (settings: Settings) => void;
     onClose: () => void;
     open?: boolean;
   }
 
-  let { settings, onApply, onClose, open = false }: Props = $props();
+  let {
+    settings,
+    onSettingsChange,
+    onSave,
+    onClose,
+    open = false,
+  }: Props = $props();
 
   let localSettings = $state<Settings>({ ...settings });
   let activeTab = $state<"grid" | "style" | "typography">("grid");
 
-  // Sync local settings when props change
+  // Sync local settings when drawer opens
   $effect(() => {
     if (open) {
       localSettings = { ...settings };
     }
   });
 
-  function handleApply(): void {
-    onApply(localSettings);
+  // Live update helper - call this whenever localSettings changes
+  function updateSetting<K extends keyof Settings>(
+    key: K,
+    value: Settings[K],
+  ): void {
+    localSettings[key] = value;
+    onSettingsChange(localSettings);
+  }
+
+  function handleSave(): void {
+    onSave(localSettings);
   }
 
   function handleBackdropClick(): void {
+    // Revert to saved settings on backdrop click
+    localSettings = { ...settings };
+    onClose();
+  }
+
+  function handleClose(): void {
+    // Revert to saved settings on cancel
+    localSettings = { ...settings };
     onClose();
   }
 
   function resetToDefaults(): void {
-    localSettings = {
+    const defaults: Settings = {
       // Grid settings
       columns: 6,
       showFavicons: true,
@@ -39,6 +63,7 @@
       tilePadding: 1,
       tileBorderRadius: 0.75,
       tileMinHeight: 5,
+      squareTiles: false,
 
       // Page settings
       pagePadding: 1.5,
@@ -51,6 +76,8 @@
       titleColor: "#333333",
       titleMaxLines: 2,
     };
+    localSettings = defaults;
+    onSettingsChange(localSettings);
   }
 </script>
 
@@ -101,7 +128,9 @@
               min="2"
               max="12"
               step="1"
-              bind:value={localSettings.columns}
+              value={localSettings.columns}
+              oninput={(e) =>
+                updateSetting("columns", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.columns}</span>
           </label>
@@ -113,7 +142,9 @@
               min="0"
               max="2"
               step="0.125"
-              bind:value={localSettings.gridGap}
+              value={localSettings.gridGap}
+              oninput={(e) =>
+                updateSetting("gridGap", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.gridGap}</span>
           </label>
@@ -125,7 +156,9 @@
               min="0"
               max="4"
               step="0.25"
-              bind:value={localSettings.pagePadding}
+              value={localSettings.pagePadding}
+              oninput={(e) =>
+                updateSetting("pagePadding", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.pagePadding}</span>
           </label>
@@ -136,20 +169,32 @@
 
           <label class="setting-row color-row">
             <span>Background</span>
-            <input type="color" bind:value={localSettings.backgroundColor} />
+            <input
+              type="color"
+              value={localSettings.backgroundColor}
+              oninput={(e) =>
+                updateSetting("backgroundColor", e.currentTarget.value)}
+            />
           </label>
 
           <label class="setting-row color-row">
             <span>Card Background</span>
             <input
               type="color"
-              bind:value={localSettings.cardBackgroundColor}
+              value={localSettings.cardBackgroundColor}
+              oninput={(e) =>
+                updateSetting("cardBackgroundColor", e.currentTarget.value)}
             />
           </label>
 
           <label class="setting-row color-row">
             <span>Title Color</span>
-            <input type="color" bind:value={localSettings.titleColor} />
+            <input
+              type="color"
+              value={localSettings.titleColor}
+              oninput={(e) =>
+                updateSetting("titleColor", e.currentTarget.value)}
+            />
           </label>
         </div>
 
@@ -163,7 +208,9 @@
               min="0.25"
               max="2"
               step="0.125"
-              bind:value={localSettings.tilePadding}
+              value={localSettings.tilePadding}
+              oninput={(e) =>
+                updateSetting("tilePadding", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.tilePadding}</span>
           </label>
@@ -175,7 +222,12 @@
               min="0"
               max="2"
               step="0.125"
-              bind:value={localSettings.tileBorderRadius}
+              value={localSettings.tileBorderRadius}
+              oninput={(e) =>
+                updateSetting(
+                  "tileBorderRadius",
+                  Number(e.currentTarget.value),
+                )}
             />
             <span class="value">{localSettings.tileBorderRadius}</span>
           </label>
@@ -187,9 +239,21 @@
               min="3"
               max="10"
               step="0.5"
-              bind:value={localSettings.tileMinHeight}
+              value={localSettings.tileMinHeight}
+              oninput={(e) =>
+                updateSetting("tileMinHeight", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.tileMinHeight}</span>
+          </label>
+
+          <label class="setting-row checkbox">
+            <span>Square Tiles</span>
+            <input
+              type="checkbox"
+              checked={localSettings.squareTiles}
+              onchange={(e) =>
+                updateSetting("squareTiles", e.currentTarget.checked)}
+            />
           </label>
         </div>
       {:else if activeTab === "typography"}
@@ -203,7 +267,9 @@
               min="0.5"
               max="1.5"
               step="0.0625"
-              bind:value={localSettings.titleFontSize}
+              value={localSettings.titleFontSize}
+              oninput={(e) =>
+                updateSetting("titleFontSize", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.titleFontSize}</span>
           </label>
@@ -215,14 +281,21 @@
               min="1"
               max="4"
               step="1"
-              bind:value={localSettings.titleMaxLines}
+              value={localSettings.titleMaxLines}
+              oninput={(e) =>
+                updateSetting("titleMaxLines", Number(e.currentTarget.value))}
             />
             <span class="value">{localSettings.titleMaxLines}</span>
           </label>
 
           <label class="setting-row checkbox">
             <span>Show Favicons</span>
-            <input type="checkbox" bind:checked={localSettings.showFavicons} />
+            <input
+              type="checkbox"
+              checked={localSettings.showFavicons}
+              onchange={(e) =>
+                updateSetting("showFavicons", e.currentTarget.checked)}
+            />
           </label>
         </div>
       {/if}
@@ -233,11 +306,11 @@
         Reset
       </button>
       <div class="footer-right">
-        <button class="btn btn-secondary" onclick={onClose} type="button">
+        <button class="btn btn-secondary" onclick={handleClose} type="button">
           Cancel
         </button>
-        <button class="btn btn-primary" onclick={handleApply} type="button">
-          Apply
+        <button class="btn btn-primary" onclick={handleSave} type="button">
+          Save
         </button>
       </div>
     </div>

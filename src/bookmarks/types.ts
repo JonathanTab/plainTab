@@ -34,6 +34,7 @@ export interface Settings {
     tilePadding: number; // in rem
     tileBorderRadius: number; // in rem
     tileMinHeight: number; // in rem
+    squareTiles: boolean; // force square aspect ratio
 
     // Page settings
     pagePadding: number; // in rem

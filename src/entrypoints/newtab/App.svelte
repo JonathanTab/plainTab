@@ -35,11 +35,23 @@
     isDrawerOpen = true;
   }
 
-  function closeSettings(): void {
+  async function closeSettings(): Promise<void> {
+    // Revert to saved settings when closing without saving
+    await loadSettings();
     isDrawerOpen = false;
   }
 
-  async function applySettings(newSettings: typeof settings): Promise<void> {
+  async function handleSettingsChange(
+    newSettings: typeof settings,
+  ): Promise<void> {
+    // Update settings in store for live preview (without saving to storage)
+    settingsStore.set(newSettings);
+  }
+
+  async function handleSettingsSave(
+    newSettings: typeof settings,
+  ): Promise<void> {
+    // Save settings to storage
     await saveSettings(newSettings);
     isDrawerOpen = false;
   }
@@ -126,7 +138,8 @@
   <SettingsDrawer
     {settings}
     open={isDrawerOpen}
-    onApply={applySettings}
+    onSettingsChange={handleSettingsChange}
+    onSave={handleSettingsSave}
     onClose={closeSettings}
   />
 

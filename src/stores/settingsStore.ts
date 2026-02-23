@@ -14,6 +14,7 @@ const defaultSettings: Settings = {
     tilePadding: 1, // 16px
     tileBorderRadius: 0.75, // 12px
     tileMinHeight: 5, // 80px
+    squareTiles: false,
 
     // Page settings
     pagePadding: 1.5, // 24px
