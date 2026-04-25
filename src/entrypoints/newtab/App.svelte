@@ -8,6 +8,7 @@
     loadBookmarksBar,
     setupBookmarkListeners,
   } from "../../stores/bookmarksStore";
+  import { moveBookmark } from "../../bookmarks/index";
   import {
     settingsStore,
     loadSettings,
@@ -97,6 +98,16 @@
     await deleteBookmark(id);
     await loadBookmarksBar();
   }
+
+  async function handleReorder(fromIndex: number, toIndex: number): Promise<void> {
+    // Optimistically reorder in the store so the UI updates instantly
+    const reordered = [...bookmarks];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    bookmarksStore.set(reordered);
+    // Persist by moving the bookmark in Chrome
+    await moveBookmark(moved.id, toIndex);
+  }
 </script>
 
 <div class="container" style="background: {settings.backgroundColor};">
@@ -131,7 +142,7 @@
         </p>
       </div>
     {:else}
-      <BookmarkGrid {bookmarks} {settings} onEdit={handleEditBookmark} />
+      <BookmarkGrid {bookmarks} {settings} onEdit={handleEditBookmark} onReorder={handleReorder} />
     {/if}
   </main>
 

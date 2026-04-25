@@ -1,38 +1,46 @@
 import type { BookmarkItem } from './types';
 
-/**
- * Walk a bookmark tree recursively and extract only bookmark nodes (with url).
- */
-function collectBookmarks(nodes: chrome.bookmarks.BookmarkTreeNode[], result: BookmarkItem[]): void {
-    for (const node of nodes) {
-        if (node.url) {
-            result.push({
-                id: node.id,
-                title: node.title || node.url,
-                url: node.url,
-            });
-        }
-        if (node.children) {
-            collectBookmarks(node.children, result);
-        }
+function nodeToItem(node: chrome.bookmarks.BookmarkTreeNode): BookmarkItem | null {
+    if (node.url) {
+        return { id: node.id, title: node.title || node.url, url: node.url };
     }
+    // folder (no url, has children array even if empty)
+    if (!node.url && node.title !== undefined) {
+        const children: BookmarkItem[] = (node.children || [])
+            .map(nodeToItem)
+            .filter((item): item is BookmarkItem => item !== null);
+        return { id: node.id, title: node.title, url: '', isFolder: true, children };
+    }
+    return null;
 }
 
 /**
- * Get all bookmarks from the Bookmarks Bar.
- * The Bookmarks Bar has a fixed ID of "1" in Chrome.
+ * Get all direct children of the Bookmarks Bar as display items (bookmarks + folders).
  */
 export async function getBookmarksBar(): Promise<BookmarkItem[]> {
     return new Promise((resolve) => {
-        chrome.bookmarks.getChildren("1", (children) => {
-            if (!children) {
+        chrome.bookmarks.getSubTree("1", (results) => {
+            if (!results || !results[0]?.children) {
                 resolve([]);
                 return;
             }
-
-            const items: BookmarkItem[] = [];
-            collectBookmarks(children, items);
+            const items = results[0].children
+                .map(nodeToItem)
+                .filter((item): item is BookmarkItem => item !== null);
             resolve(items);
+        });
+    });
+}
+
+/**
+ * Move a bookmark or folder to a new index in the Bookmarks Bar.
+ * toIndex is the 0-based display index (maps directly to Chrome index since we show all children).
+ */
+export async function moveBookmark(id: string, toIndex: number): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+        chrome.bookmarks.move(id, { parentId: "1", index: toIndex }, () => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else resolve();
         });
     });
 }

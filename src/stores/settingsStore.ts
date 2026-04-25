@@ -8,13 +8,13 @@ const defaultSettings: Settings = {
     // Grid settings
     columns: 6,
     showFavicons: true,
-    gridGap: 0.75, // 12px
+    gridGap: 0.5, // 8px
 
     // Tile settings
-    tilePadding: 1, // 16px
-    tileBorderRadius: 0.75, // 12px
-    tileMinHeight: 5, // 80px
-    squareTiles: false,
+    tilePadding: 0.5, // 8px
+    tileBorderRadius: 0.5, // 8px
+    tileMinHeight: 3.5, // 56px
+    squareTiles: true,
 
     // Page settings
     pagePadding: 1.5, // 24px

@@ -14,28 +14,16 @@
   let contextMenu = $state(false);
   let contextMenuX = $state(0);
   let contextMenuY = $state(0);
+  let folderOpen = $state(false);
+  let folderAnchor = $state<DOMRect | null>(null);
+  let buttonEl = $state<HTMLButtonElement | null>(null);
 
-  // Generate a consistent color from a string (URL)
   function getColorFromString(str: string): string {
     const colors = [
-      "#FF6B6B", // Red
-      "#4ECDC4", // Teal
-      "#45B7D1", // Blue
-      "#96CEB4", // Green
-      "#FFEAA7", // Yellow
-      "#DDA0DD", // Plum
-      "#98D8C8", // Mint
-      "#F7DC6F", // Gold
-      "#BB8FCE", // Purple
-      "#85C1E9", // Light Blue
-      "#F8B500", // Orange
-      "#00CED1", // Dark Cyan
-      "#FF7F50", // Coral
-      "#9FE2BF", // Sea Green
-      "#DE3163", // Cerise
-      "#40E0D0", // Turquoise
+      "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+      "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+      "#F8B500", "#00CED1", "#FF7F50", "#9FE2BF", "#DE3163", "#40E0D0",
     ];
-
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
@@ -43,44 +31,36 @@
     return colors[Math.abs(hash) % colors.length];
   }
 
-  // Get the first letter for the fallback favicon
   function getInitialLetter(title: string): string {
-    // Get first alphanumeric character, prioritizing letters
     const match = title.match(/[a-zA-Z0-9]/);
     return match ? match[0].toUpperCase() : "?";
   }
 
-  // Computed values for the fallback
   let letterInitial = $derived(getInitialLetter(bookmark.title));
-  let letterColor = $derived(getColorFromString(bookmark.url));
+  let letterColor = $derived(getColorFromString(bookmark.url || bookmark.id));
 
-  // Load custom favicon or use default
   $effect(() => {
+    if (bookmark.isFolder) return;
     async function loadFavicon() {
-      if (!settings.showFavicons) {
-        faviconSrc = "";
-        return;
-      }
-
-      // First check for custom favicon
+      if (!settings.showFavicons) { faviconSrc = ""; return; }
       const custom = await getCustomFavicon(bookmark.url);
-      if (custom) {
-        faviconSrc = custom;
-      } else {
-        faviconSrc = getFaviconUrl(bookmark.url);
-      }
+      faviconSrc = custom ?? getFaviconUrl(bookmark.url);
     }
     loadFavicon();
   });
 
-  function openBookmark(): void {
-    window.open(bookmark.url, "_blank");
+  function handleClick(): void {
+    if (bookmark.isFolder) {
+      folderAnchor = buttonEl?.getBoundingClientRect() ?? null;
+      folderOpen = !folderOpen;
+    } else {
+      window.location.href = bookmark.url;
+    }
   }
 
   function handleContextMenu(e: MouseEvent): void {
     e.preventDefault();
     e.stopPropagation();
-
     if (onEdit) {
       contextMenuX = e.clientX;
       contextMenuY = e.clientY;
@@ -89,30 +69,38 @@
   }
 
   function handleEdit(): void {
-    if (onEdit) {
-      onEdit(bookmark);
-    }
+    onEdit?.(bookmark);
     contextMenu = false;
   }
 
-  function handleClickOutside(e: MouseEvent): void {
-    if (contextMenu) {
-      contextMenu = false;
-    }
+  function handleClickOutside(): void {
+    contextMenu = false;
+    folderOpen = false;
   }
 
-  // Compute the line-clamp value
-  let lineClampStyle = $derived(
-    `-webkit-line-clamp: ${settings.titleMaxLines};`,
+  let lineClampStyle = $derived(`-webkit-line-clamp: ${settings.titleMaxLines};`);
+
+  let folderChildren: BookmarkItem[] = $derived(bookmark.children ?? []);
+
+  function hideImage(e: Event): void {
+    (e.currentTarget as HTMLImageElement).style.display = 'none';
+  }
+
+  let dropdownStyle = $derived(
+    folderAnchor
+      ? `left: ${Math.min(folderAnchor.left, window.innerWidth - 220)}px; top: ${folderAnchor.bottom + 6}px;`
+      : ""
   );
 </script>
 
 <svelte:window onclick={handleClickOutside} />
 
 <button
+  bind:this={buttonEl}
   class="tile"
   class:square={settings.squareTiles}
-  onclick={openBookmark}
+  class:folder={bookmark.isFolder}
+  onclick={handleClick}
   oncontextmenu={handleContextMenu}
   type="button"
   style="
@@ -125,14 +113,14 @@
     --color: {settings.titleColor};
   "
 >
-  {#if settings.showFavicons && faviconSrc}
-    <img
-      src={faviconSrc}
-      alt=""
-      class="favicon"
-      loading="lazy"
-      onerror={() => (faviconSrc = "")}
-    />
+  {#if bookmark.isFolder}
+    <div class="folder-icon" style="color: {letterColor};">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
+      </svg>
+    </div>
+  {:else if settings.showFavicons && faviconSrc}
+    <img src={faviconSrc} alt="" class="favicon" loading="lazy" onerror={() => (faviconSrc = "")} />
   {:else if settings.showFavicons}
     <div class="favicon-fallback" style="background-color: {letterColor};">
       {letterInitial}
@@ -141,6 +129,39 @@
   <span class="title" style={lineClampStyle}>{bookmark.title}</span>
 </button>
 
+{#if folderOpen && bookmark.isFolder && folderAnchor}
+  <div
+    class="folder-dropdown"
+    style={dropdownStyle}
+    onclick={(e) => e.stopPropagation()}
+    role="menu"
+  >
+    {#if !bookmark.children || bookmark.children.length === 0}
+      <span class="folder-empty">Empty folder</span>
+    {:else}
+      {#each folderChildren as child (child.id)}
+        <a
+          class="folder-item"
+          href={child.url}
+          role="menuitem"
+          onclick={(e) => { e.stopPropagation(); folderOpen = false; }}
+        >
+          {#if settings.showFavicons}
+            <img
+              src={getFaviconUrl(child.url)}
+              alt=""
+              class="folder-item-favicon"
+              loading="lazy"
+              onerror={hideImage}
+            />
+          {/if}
+          <span class="folder-item-title">{child.title}</span>
+        </a>
+      {/each}
+    {/if}
+  </div>
+{/if}
+
 {#if contextMenu}
   <div
     class="context-menu"
@@ -148,27 +169,10 @@
     onclick={(e) => e.stopPropagation()}
     role="menu"
   >
-    <button
-      class="context-menu-item"
-      onclick={handleEdit}
-      type="button"
-      role="menuitem"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="16"
-        height="16"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        stroke-linecap="round"
-        stroke-linejoin="round"
-      >
-        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-        ></path>
-        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-        ></path>
+    <button class="context-menu-item" onclick={handleEdit} type="button" role="menuitem">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
       </svg>
       Edit Bookmark
     </button>
@@ -180,17 +184,19 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: var(--padding, 1rem);
+    justify-content: center;
+    padding: var(--padding, 0.5rem);
     background: var(--bg, #ffffff);
     border: none;
-    border-radius: var(--border-radius, 0.75rem);
+    border-radius: var(--border-radius, 0.5rem);
     cursor: pointer;
     text-align: center;
     transition:
       transform 0.15s ease,
       box-shadow 0.15s ease;
     user-select: none;
-    min-height: var(--min-height, 5rem);
+    min-height: var(--min-height, 3.5rem);
+    width: 100%;
   }
 
   .tile:hover {
@@ -207,24 +213,33 @@
   }
 
   .favicon {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 8px;
-    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    margin-bottom: 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
   }
 
   .favicon-fallback {
-    width: 32px;
-    height: 32px;
-    margin-bottom: 8px;
-    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    margin-bottom: 5px;
+    border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
     color: #ffffff;
-    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .folder-icon {
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
   }
 
   .title {
@@ -235,6 +250,58 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     word-break: break-word;
+  }
+
+  /* Folder dropdown */
+  .folder-dropdown {
+    position: fixed;
+    z-index: 1000;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    padding: 6px;
+    min-width: 200px;
+    max-width: 280px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .folder-empty {
+    display: block;
+    padding: 10px 12px;
+    font-size: 0.8125rem;
+    color: #999;
+    text-align: center;
+  }
+
+  .folder-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #333;
+    transition: background-color 0.12s ease;
+    overflow: hidden;
+  }
+
+  .folder-item:hover {
+    background-color: #f0f0f0;
+  }
+
+  .folder-item-favicon {
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .folder-item-title {
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .context-menu {

@@ -19,6 +19,8 @@ export interface BookmarkItem {
     title: string;
     url: string;
     favicon?: string;
+    isFolder?: boolean;
+    children?: BookmarkItem[];
 }
 
 /**
