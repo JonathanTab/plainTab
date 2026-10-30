@@ -2,7 +2,7 @@
   "name": "plaintab",
   "description": "A sleek new tab page displaying your bookmarks bar",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.4",
   "type": "module",
   "scripts": {
     "dev": "wxt",

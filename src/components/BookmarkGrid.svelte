@@ -69,12 +69,17 @@
 </div>
 
 <style>
+  /* Fixed 1.5in x 1.5in tiles, up to --columns across; fewer when the window is narrower. */
   .grid {
     display: grid;
-    grid-template-columns: repeat(var(--columns, 6), 1fr);
+    grid-template-columns: repeat(auto-fill, 1.5in);
+    justify-content: center;
     gap: var(--gap, 0.5rem);
     padding: var(--padding, 1.5rem);
-    max-width: 1400px;
+    max-width: calc(
+      var(--columns, 12) * 1.5in + (var(--columns, 12) - 1) * var(--gap, 0.5rem) +
+        2 * var(--padding, 1.5rem)
+    );
     margin: 0 auto;
   }
 
@@ -92,17 +97,5 @@
   .drag-wrapper.is-drop-target {
     outline-color: #6c63ff;
     background: rgba(108, 99, 255, 0.06);
-  }
-
-  @media (max-width: 1200px) {
-    .grid { grid-template-columns: repeat(5, 1fr); }
-  }
-
-  @media (max-width: 900px) {
-    .grid { grid-template-columns: repeat(4, 1fr); }
-  }
-
-  @media (max-width: 600px) {
-    .grid { grid-template-columns: repeat(3, 1fr); }
   }
 </style>

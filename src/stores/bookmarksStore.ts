@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 import { writable } from 'svelte/store';
 import type { BookmarkItem } from '../bookmarks/types';
 import { getBookmarksBar } from '../bookmarks/index';
@@ -13,8 +14,8 @@ export async function loadBookmarksBar(): Promise<void> {
  * Set up listeners for bookmark changes.
  */
 export function setupBookmarkListeners(): void {
-    chrome.bookmarks.onCreated.addListener(() => loadBookmarksBar());
-    chrome.bookmarks.onRemoved.addListener(() => loadBookmarksBar());
-    chrome.bookmarks.onChanged.addListener(() => loadBookmarksBar());
-    chrome.bookmarks.onMoved.addListener(() => loadBookmarksBar());
+    browser.bookmarks.onCreated.addListener(() => loadBookmarksBar());
+    browser.bookmarks.onRemoved.addListener(() => loadBookmarksBar());
+    browser.bookmarks.onChanged.addListener(() => loadBookmarksBar());
+    browser.bookmarks.onMoved.addListener(() => loadBookmarksBar());
 }

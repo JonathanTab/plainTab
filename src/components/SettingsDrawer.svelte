@@ -55,15 +55,15 @@
   function resetToDefaults(): void {
     const defaults: Settings = {
       // Grid settings
-      columns: 6,
+      columns: 12,
       showFavicons: true,
-      gridGap: 0.75,
+      gridGap: 0.5,
 
       // Tile settings
-      tilePadding: 1,
-      tileBorderRadius: 0.75,
-      tileMinHeight: 5,
-      squareTiles: false,
+      tilePadding: 0.5,
+      tileBorderRadius: 0.5,
+      tileMinHeight: 3.5,
+      squareTiles: true,
 
       // Page settings
       pagePadding: 1.5,
@@ -72,7 +72,7 @@
       cardHoverShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
 
       // Typography
-      titleFontSize: 0.8125,
+      titleFontSize: 0.875,
       titleColor: "#333333",
       titleMaxLines: 2,
     };

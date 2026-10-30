@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { BookmarkItem, Settings } from "../bookmarks/types";
   import { getFaviconUrl, getCustomFavicon } from "../bookmarks/index";
+  import { getCachedIcon, discoverIcon } from "../bookmarks/favicon";
 
   interface Props {
     bookmark: BookmarkItem;
@@ -10,7 +11,10 @@
 
   let { bookmark, settings, onEdit }: Props = $props();
 
-  let faviconSrc = $state("");
+  // Candidate icons in preference order; one that fails to load moves on to the next.
+  let sources = $state<string[]>([]);
+  let srcIndex = $state(0);
+  let faviconSrc = $derived(sources[srcIndex] ?? "");
   let contextMenu = $state(false);
   let contextMenuX = $state(0);
   let contextMenuY = $state(0);
@@ -41,10 +45,20 @@
 
   $effect(() => {
     if (bookmark.isFolder) return;
+    const url = bookmark.url;
+    const show = (list: (string | null | undefined)[]) => {
+      if (url !== bookmark.url) return;
+      sources = list.filter((s): s is string => !!s);
+      srcIndex = 0;
+    };
     async function loadFavicon() {
-      if (!settings.showFavicons) { faviconSrc = ""; return; }
-      const custom = await getCustomFavicon(bookmark.url);
-      faviconSrc = custom ?? getFaviconUrl(bookmark.url);
+      if (!settings.showFavicons) { show([]); return; }
+      const custom = await getCustomFavicon(url);
+      if (custom) { show([custom]); return; }
+      const fallback = getFaviconUrl(url);
+      const cached = await getCachedIcon(url);
+      show([cached, fallback]);
+      if (cached === undefined) show([await discoverIcon(url), fallback]);
     }
     loadFavicon();
   });
@@ -73,9 +87,10 @@
     contextMenu = false;
   }
 
-  function handleClickOutside(): void {
+  function handleClickOutside(e: MouseEvent): void {
     contextMenu = false;
-    folderOpen = false;
+    // The click that opens a folder reaches the window too; it must not close it again.
+    if (!buttonEl?.contains(e.target as Node)) folderOpen = false;
   }
 
   let lineClampStyle = $derived(`-webkit-line-clamp: ${settings.titleMaxLines};`);
@@ -115,12 +130,12 @@
 >
   {#if bookmark.isFolder}
     <div class="folder-icon" style="color: {letterColor};">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor">
         <path d="M10 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>
       </svg>
     </div>
   {:else if settings.showFavicons && faviconSrc}
-    <img src={faviconSrc} alt="" class="favicon" loading="lazy" onerror={() => (faviconSrc = "")} />
+    <img src={faviconSrc} alt="" class="favicon" loading="lazy" onerror={() => srcIndex++} />
   {:else if settings.showFavicons}
     <div class="favicon-fallback" style="background-color: {letterColor};">
       {letterInitial}
@@ -195,8 +210,9 @@
       transform 0.15s ease,
       box-shadow 0.15s ease;
     user-select: none;
-    min-height: var(--min-height, 3.5rem);
-    width: 100%;
+    width: 1.5in;
+    height: 1.5in;
+    overflow: hidden;
   }
 
   .tile:hover {
@@ -208,34 +224,30 @@
     transform: translateY(0);
   }
 
-  .tile.square {
-    aspect-ratio: 1 / 1;
-  }
-
   .favicon {
-    width: 24px;
-    height: 24px;
-    margin-bottom: 5px;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
     border-radius: 3px;
     flex-shrink: 0;
   }
 
   .favicon-fallback {
-    width: 24px;
-    height: 24px;
-    margin-bottom: 5px;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 8px;
     border-radius: 3px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
+    font-size: 17px;
     font-weight: 600;
     color: #ffffff;
     flex-shrink: 0;
   }
 
   .folder-icon {
-    margin-bottom: 5px;
+    margin-bottom: 8px;
     display: flex;
     align-items: center;
     justify-content: center;

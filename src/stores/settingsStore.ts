@@ -1,3 +1,4 @@
+import { browser } from 'wxt/browser';
 import { writable } from 'svelte/store';
 import type { Settings } from '../bookmarks/types';
 
@@ -6,7 +7,7 @@ import type { Settings } from '../bookmarks/types';
  */
 const defaultSettings: Settings = {
     // Grid settings
-    columns: 6,
+    columns: 12,
     showFavicons: true,
     gridGap: 0.5, // 8px
 
@@ -23,7 +24,7 @@ const defaultSettings: Settings = {
     cardHoverShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
 
     // Typography
-    titleFontSize: 0.8125, // 13px
+    titleFontSize: 0.875, // 14px
     titleColor: '#333333',
     titleMaxLines: 2,
 };
@@ -42,7 +43,7 @@ export const settingsStore = writable<Settings>(defaultSettings);
  * Load settings from synced extension storage.
  */
 export async function loadSettings(): Promise<void> {
-    const result = await chrome.storage.sync.get(STORAGE_KEY);
+    const result = await browser.storage.sync.get(STORAGE_KEY);
     if (result[STORAGE_KEY]) {
         settingsStore.set({ ...defaultSettings, ...result[STORAGE_KEY] });
     }
@@ -52,7 +53,7 @@ export async function loadSettings(): Promise<void> {
  * Save settings to synced extension storage.
  */
 export async function saveSettings(settings: Settings): Promise<void> {
-    await chrome.storage.sync.set({ [STORAGE_KEY]: settings });
+    await browser.storage.sync.set({ [STORAGE_KEY]: settings });
     settingsStore.set(settings);
 }
 
